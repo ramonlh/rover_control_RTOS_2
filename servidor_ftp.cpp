@@ -6,10 +6,8 @@ FtpServer ftpSrv;
 
 bool init_ftp_server(const char* user, const char* password)
 {
-    if (!SPIFFS.begin(true)) {
-        return false;
-    }
-
+    Serial.println("Iniciando FTP...");
     ftpSrv.begin(user, password);
+    Serial.println("FTP arrancado");
     return true;
 }

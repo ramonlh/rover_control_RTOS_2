@@ -3,6 +3,7 @@
 #define DEBUG
 
 // librerías genéricas
+#include <Wire.h>
 #include <WiFi.h>
 #include <ESPmDNS.h>
 #include <ArduinoOTA.h>
@@ -23,16 +24,15 @@ SemaphoreHandle_t i2cMutex;
 #include "radar_vl53l0x.h"
 #include "4motores.h"
 #include "fecha_hora.h"
-#include "sensor_ultrasonidos.h"
+//#include "sensor_ultrasonidos.h"
 #include "dht11.h" 
 #include "servidor_web.h"
 #include "servidor_websocket.h"
-//#include "mqtt.h"
 
 #include "servidor_ftp.h"
 #include "radio_control.h"
 #include "radar_humano.h"
-#include "pantalla.h"
+//#include "pantalla.h"
 #include "mux_mcp23017.h"
 #include "mux_servos_pca9685.h"
 
@@ -73,6 +73,17 @@ void setup() {
 
   i2cMutex = xSemaphoreCreateMutex();
 
+  enabled_task_websockets = 1; 
+  enabled_task_DHT = 1;
+  enabled_task_radarhumano = 1; 
+  enabled_task_radiocontrol = 1;
+  enabled_task_ultrasonidos= 0;
+  
+  enabled_task_servomotores = 1;
+  enabled_task_motores = 1; 
+  enabled_task_giroscopio = 1; 
+  enabled_task_radar = 1;
+
   if (modo_conex == 0)
     {
     Serial.println("Modo: 0 STA+AP+RC");
@@ -80,7 +91,7 @@ void setup() {
     init_webserver();
 //    init_ftp_server();  
     if (!init_ftp_server("admin", "12341234")) {
-      // manejar error
+    Serial.println("ERROR FTP");
     }
     xTaskCreate(task_websockets, "Task WS", tamano_task_websockets, NULL, prioridad_task_websockets, NULL); // comprobado 2048
     }
@@ -129,17 +140,6 @@ void setup() {
   xTaskCreate(task_radar, "Task Radar", tamano_task_radar, NULL, prioridad_task_radar, NULL); 
   xTaskCreate(task_giroscopio, "Task Giros", tamano_task_giroscopio, NULL, prioridad_task_giroscopio, NULL);
   
-  enabled_task_websockets = 1; 
-
-  enabled_task_DHT = 1;
-  enabled_task_radarhumano = 1; 
-  enabled_task_radiocontrol = 1;
-  enabled_task_ultrasonidos= 0;
-  
-  enabled_task_servomotores = 1;
-  enabled_task_motores = 1; 
-  enabled_task_giroscopio = 1; 
-  enabled_task_radar = 1;
 
 }
 

@@ -12,7 +12,7 @@ Adafruit_PWMServoDriver servos = Adafruit_PWMServoDriver(0x40);
 int radar_leido = 0;
 
 int angulo_servo_1 = 90;
-int angulo_servo_2 = 90;
+int angulo_servo_2 = 60;
 int angulo_servo_3 = 90;
 
 int ang_lim[16][2] = {
@@ -47,23 +47,32 @@ void task_servomotores(void *pvParameters)
     xSemaphoreGive(i2cMutex);
   }
 
+  int last_servo_1 = -999;
+  int last_servo_2 = -999;
+  int last_servo_3 = -999;
+
   TickType_t xLastWakeTime = xTaskGetTickCount();
 
   while (1) {
     esp_task_wdt_reset();
 
     if (enabled_task_servomotores == 1) {
-      if (xSemaphoreTake(i2cMutex, pdMS_TO_TICKS(100))) {
-        moverServo(SERVO1_CHANNEL, angulo_servo_1);
-        esp_task_wdt_reset();
+      if (xSemaphoreTake(i2cMutex, pdMS_TO_TICKS(50))) {
 
-        moverServo(SERVO2_CHANNEL, angulo_servo_2);
-        esp_task_wdt_reset();
+        if (angulo_servo_1 != last_servo_1) {
+          moverServo(SERVO1_CHANNEL, angulo_servo_1);
+          last_servo_1 = angulo_servo_1;
+        }
 
-        if (radar_leido == 1) {
+        if (angulo_servo_2 != last_servo_2) {
+          moverServo(SERVO2_CHANNEL, angulo_servo_2);
+          last_servo_2 = angulo_servo_2;
+        }
+
+        if (radar_leido == 1 && angulo_servo_3 != last_servo_3) {
           radar_leido = 0;
           moverServo(SERVO3_CHANNEL, angulo_servo_3);
-          esp_task_wdt_reset();
+          last_servo_3 = angulo_servo_3;
         }
 
         xSemaphoreGive(i2cMutex);

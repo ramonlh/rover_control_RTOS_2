@@ -5,7 +5,6 @@
 #include <WebSocketsServer.h>
 
 void init_websocket();
-void websocket_loop();
 void sendRadarData();
 void websocket_fail_safe_check();
 void task_websockets(void *pvParameters);

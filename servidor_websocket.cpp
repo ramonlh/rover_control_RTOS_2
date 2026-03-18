@@ -1,14 +1,13 @@
+
 #include "servidor_websocket.h"
 #include "defines.h"
+#include "4motores.h"
 #include "DHTesp.h"
 
 #include <WiFi.h>
 #include <ArduinoJson.h>
 
 // Estos símbolos ya existen en otros módulos .h del proyecto
-extern int tipo_mov;
-extern int rover_speed;
-
 extern int angulo_servo_1;
 extern int angulo_servo_2;
 
@@ -22,6 +21,9 @@ extern float angleZ;
 
 extern TempAndHumidity valores_DHT11;
 
+extern int presencia_humana;
+extern int enviar_presencia;
+
 void rover_move(int d_trd, int d_tri, int d_ded, int d_dei,
                 int s_trd, int s_tri, int s_ded, int s_dei);
 void rover_stop();
@@ -33,7 +35,7 @@ namespace {
     constexpr int ROVER_SPEED_MIN = 500;
     constexpr int ROVER_SPEED_MAX = 4000;
 
-    constexpr uint32_t WS_FAILSAFE_MS = 1000;
+    constexpr uint32_t WS_FAILSAFE_MS = 300; 
 
     WebSocketsServer webSocket(PORT_WEBSOCKET);
     uint32_t ultimo_comando_ms = 0;
@@ -100,6 +102,7 @@ static bool procesar_json_movimiento(const char* message)
     int s_ded = jsonDoc["s3"].as<int>();
     int s_dei = jsonDoc["s4"].as<int>();
 
+    tipo_mov = CMD_SIN_MOV;
     rover_move(d_trd, d_tri, d_ded, d_dei, s_trd, s_tri, s_ded, s_dei);
     marcar_actividad_comando();
     return true;
@@ -107,82 +110,96 @@ static bool procesar_json_movimiento(const char* message)
 
 static bool procesar_comando_texto(uint8_t cliente, const char* message)
 {
-    if      (strcmp(message, "f") == 0)    { tipo_mov = 1;  marcar_actividad_comando(); return true; }
-    else if (strcmp(message, "r") == 0)    { tipo_mov = 2;  marcar_actividad_comando(); return true; }
-    else if (strcmp(message, "fl") == 0)   { tipo_mov = 3;  marcar_actividad_comando(); return true; }
-    else if (strcmp(message, "fr") == 0)   { tipo_mov = 4;  marcar_actividad_comando(); return true; }
-    else if (strcmp(message, "rl") == 0)   { tipo_mov = 5;  marcar_actividad_comando(); return true; }
-    else if (strcmp(message, "rr") == 0)   { tipo_mov = 6;  marcar_actividad_comando(); return true; }
-    else if (strcmp(message, "rotl") == 0) { tipo_mov = 7;  marcar_actividad_comando(); return true; }
-    else if (strcmp(message, "rotr") == 0) { tipo_mov = 8;  marcar_actividad_comando(); return true; }
-    else if (strcmp(message, "latl") == 0) { tipo_mov = 9;  marcar_actividad_comando(); return true; }
-    else if (strcmp(message, "latr") == 0) { tipo_mov = 10; marcar_actividad_comando(); return true; }
+    if      (strcmp(message, "f") == 0)    { tipo_mov = comando_web(MOV_ADELANTE);     marcar_actividad_comando(); return true; }
+    else if (strcmp(message, "r") == 0)    { tipo_mov = comando_web(MOV_ATRAS);        marcar_actividad_comando(); return true; }
+    else if (strcmp(message, "fl") == 0)   { tipo_mov = comando_web(MOV_ADELANTE_IZQ); marcar_actividad_comando(); return true; }
+    else if (strcmp(message, "fr") == 0)   { tipo_mov = comando_web(MOV_ADELANTE_DER); marcar_actividad_comando(); return true; }
+    else if (strcmp(message, "rl") == 0)   { tipo_mov = comando_web(MOV_ATRAS_IZQ);    marcar_actividad_comando(); return true; }
+    else if (strcmp(message, "rr") == 0)   { tipo_mov = comando_web(MOV_ATRAS_DER);    marcar_actividad_comando(); return true; }
+    else if (strcmp(message, "rotl") == 0) { tipo_mov = comando_web(MOV_ROT_IZQ);      marcar_actividad_comando(); return true; }
+    else if (strcmp(message, "rotr") == 0) { tipo_mov = comando_web(MOV_ROT_DER);      marcar_actividad_comando(); return true; }
+    else if (strcmp(message, "latl") == 0) { tipo_mov = comando_web(MOV_LAT_1);        marcar_actividad_comando(); return true; }
+    else if (strcmp(message, "latr") == 0) { tipo_mov = comando_web(MOV_LAT_2);        marcar_actividad_comando(); return true; }
 
     else if (strcmp(message, "stop") == 0) {
-        tipo_mov = 0;
-        rover_stop();
+        tipo_mov = comando_web(MOV_STOP);
+        control_activo = 0;
         marcar_actividad_comando();
         return true;
     }
 
     else if (strcmp(message, "caml") == 0) {
         tipo_mov = 31;
-        angulo_servo_1 = clamp_int(angulo_servo_1 + 1, 0, 180);
+        angulo_servo_1 = clamp_int(angulo_servo_1 + 3, 0, 180);
         marcar_actividad_comando();
         return true;
     }
     else if (strcmp(message, "camr") == 0) {
         tipo_mov = 32;
-        angulo_servo_1 = clamp_int(angulo_servo_1 - 1, 0, 180);
+        angulo_servo_1 = clamp_int(angulo_servo_1 - 3, 0, 180);
         marcar_actividad_comando();
         return true;
     }
     else if (strcmp(message, "camup") == 0) {
         tipo_mov = 33;
-        angulo_servo_2 = clamp_int(angulo_servo_2 - 1, 0, 180);
+        angulo_servo_2 = clamp_int(angulo_servo_2 - 3, 0, 180);
         marcar_actividad_comando();
         return true;
     }
     else if (strcmp(message, "camdn") == 0) {
         tipo_mov = 34;
-        angulo_servo_2 = clamp_int(angulo_servo_2 + 1, 0, 180);
+        angulo_servo_2 = clamp_int(angulo_servo_2 + 3, 0, 180);
         marcar_actividad_comando();
+        //Serial.println(angulo_servo_2);
         return true;
     }
-
-    else if (strcmp(message, "DIF") == 0)  { tipo_mov = 41; marcar_actividad_comando(); return true; }
-    else if (strcmp(message, "DDF") == 0)  { tipo_mov = 42; marcar_actividad_comando(); return true; }
-    else if (strcmp(message, "TIF") == 0)  { tipo_mov = 43; marcar_actividad_comando(); return true; }
-    else if (strcmp(message, "TDF") == 0)  { tipo_mov = 44; marcar_actividad_comando(); return true; }
-    else if (strcmp(message, "DIR") == 0)  { tipo_mov = 45; marcar_actividad_comando(); return true; }
-    else if (strcmp(message, "DDR") == 0)  { tipo_mov = 46; marcar_actividad_comando(); return true; }
-    else if (strcmp(message, "TIR") == 0)  { tipo_mov = 47; marcar_actividad_comando(); return true; }
-    else if (strcmp(message, "TDR") == 0)  { tipo_mov = 48; marcar_actividad_comando(); return true; }
+    else if (strcmp(message, "DIF") == 0)  { tipo_mov = comando_web(MOV_DI_ADELANTE); marcar_actividad_comando(); return true; }
+    else if (strcmp(message, "DDF") == 0)  { tipo_mov = comando_web(MOV_DD_ADELANTE); marcar_actividad_comando(); return true; }
+    else if (strcmp(message, "TIF") == 0)  { tipo_mov = comando_web(MOV_TD_ADELANTE); marcar_actividad_comando(); return true; }
+    else if (strcmp(message, "TDF") == 0)  { tipo_mov = comando_web(MOV_TI_ADELANTE); marcar_actividad_comando(); return true; }
+    else if (strcmp(message, "DIR") == 0)  { tipo_mov = comando_web(MOV_DI_ATRAS);    marcar_actividad_comando(); return true; }
+    else if (strcmp(message, "DDR") == 0)  { tipo_mov = comando_web(MOV_DD_ATRAS);    marcar_actividad_comando(); return true; }
+    else if (strcmp(message, "TIR") == 0)  { tipo_mov = comando_web(MOV_TD_ATRAS);    marcar_actividad_comando(); return true; }
+    else if (strcmp(message, "TDR") == 0)  { tipo_mov = comando_web(MOV_TI_ATRAS);    marcar_actividad_comando(); return true; }
 
     else if (strcmp(message, "speedmenos") == 0) {
-        rover_speed = clamp_int(rover_speed - 500, ROVER_SPEED_MIN, ROVER_SPEED_MAX);
+        set_speed_rover(clamp_int(rover_speed - 500, ROVER_SPEED_MIN, ROVER_SPEED_MAX));
+        marcar_actividad_comando();
         Serial.println(rover_speed);
+
+        char buffer[JSON_BUFFER_SIZE];
+        snprintf(buffer, sizeof(buffer),
+                "{\"type\":\"speed\",\"sp\":%d}",
+                rover_speed);
+        webSocket.broadcastTXT(buffer);
         return true;
     }
     else if (strcmp(message, "speedmas") == 0) {
-        rover_speed = clamp_int(rover_speed + 500, ROVER_SPEED_MIN, ROVER_SPEED_MAX);
+        set_speed_rover(clamp_int(rover_speed + 500, ROVER_SPEED_MIN, ROVER_SPEED_MAX));
+        marcar_actividad_comando();
         Serial.println(rover_speed);
+
+        char buffer[JSON_BUFFER_SIZE];
+        snprintf(buffer, sizeof(buffer),
+                "{\"type\":\"speed\",\"sp\":%d}",
+                rover_speed);
+        webSocket.broadcastTXT(buffer);
         return true;
     }
 
     else if (strcmp(message, "flash") == 0) {
-        tipo_mov = 99;
+        tipo_mov = CMD_SIN_MOV;
         digitalWrite(pin_led_7colores, !digitalRead(pin_led_7colores));
         return true;
     }
     else if (strcmp(message, "luces") == 0) {
-        tipo_mov = 99;
+        tipo_mov = CMD_SIN_MOV;
         digitalWrite(pin_led_izquierda, !digitalRead(pin_led_izquierda));
         digitalWrite(pin_led_derecha, !digitalRead(pin_led_derecha));
         return true;
     }
     else if (strcmp(message, "getssids") == 0) {
-        tipo_mov = 99;
+        tipo_mov = CMD_SIN_MOV;
         scanWiFiNetworks(cliente);
         return true;
     }
@@ -201,8 +218,8 @@ static void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t 
         case WStype_DISCONNECTED:
             Serial.printf("WebSocket cliente %u desconectado.\n", num);
             if (webSocket.connectedClients() == 0) {
-                tipo_mov = 0;
-                rover_stop();
+                tipo_mov = comando_web(MOV_STOP);
+                control_activo = 0;
             }
             break;
 
@@ -243,23 +260,15 @@ void init_websocket()
     Serial.println("Servidor WebSocket iniciado.");
 }
 
-void websocket_loop()
-{
-    if (!websocket_iniciado) return;
-
-    webSocket.loop();
-    websocket_fail_safe_check();
-}
-
 void websocket_fail_safe_check()
 {
     if (!websocket_iniciado) return;
     if (webSocket.connectedClients() == 0) return;
 
     if (millis() - ultimo_comando_ms > WS_FAILSAFE_MS) {
-        if (tipo_mov != 0) {
-            tipo_mov = 0;
-            rover_stop();
+        if (tipo_mov != comando_web(MOV_STOP)) {
+            tipo_mov = comando_web(MOV_STOP);
+            control_activo = 0;
             Serial.println("Failsafe WebSocket: rover parado por timeout.");
         }
     }
@@ -293,9 +302,15 @@ void task_websockets(void *pvParameters)
         if (enabled_task_websockets == 1 && webSocket.connectedClients() > 0) {
             char buffer[JSON_BUFFER_SIZE];
 
+            if (isfinite(valores_DHT11.temperature) && isfinite(valores_DHT11.humidity)) {
             snprintf(buffer, sizeof(buffer),
-                     "{\"type\":\"sensor\",\"t\":%.2f,\"h\":%.2f}",
-                     valores_DHT11.temperature, valores_DHT11.humidity);
+                    "{\"type\":\"sensor\",\"t\":%.2f,\"h\":%.2f}",
+                    valores_DHT11.temperature,
+                    valores_DHT11.humidity);
+            } else {
+            snprintf(buffer, sizeof(buffer),
+                    "{\"type\":\"sensor\",\"t\":null,\"h\":null}");
+            }
             webSocket.broadcastTXT(buffer);
 
             snprintf(buffer, sizeof(buffer),
@@ -310,8 +325,18 @@ void task_websockets(void *pvParameters)
                 webSocket.broadcastTXT(buffer);
                 enviar_dist = 0;
             }
+
+            if (enviar_presencia == 1) {
+                snprintf(buffer, sizeof(buffer),
+                        "{\"type\":\"presence\",\"det\":%d}",
+                        presencia_humana);
+                webSocket.broadcastTXT(buffer);
+                enviar_presencia = 0;
+            }
+
         }
 
         vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(periodo_task_websockets));
     }
 }
+

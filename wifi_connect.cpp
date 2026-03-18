@@ -5,11 +5,17 @@
 #include <Arduino.h>
 #include <WiFi.h>
 
-const char *ssid = "MikroTik-E1E1FB";
-const char *password = "18921892";
+char ssid_buf[64] = "MikroTik-E1E1FB";
+char password_buf[64] = "18921892";
 
-const char *ssidAP = "ROVER_DIEGO";
-const char *passwordAP = "12341234";
+char ssidAP_buf[64] = "ROVER_DIEGO";
+char passwordAP_buf[64] = "12341234";
+
+const char *ssid = ssid_buf;
+const char *password = password_buf;
+
+const char *ssidAP = ssidAP_buf;
+const char *passwordAP = passwordAP_buf;
 
 extern int modo_conex;
 

@@ -6,6 +6,7 @@
 RCSwitch mySwitch = RCSwitch();
 unsigned long ultima_senal_RC = 0;
 
+
 // Códigos mando blanco RF433
 static const int num_buttonsRC = 16;
 static const unsigned long codesRC[num_buttonsRC] = {

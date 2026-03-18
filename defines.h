@@ -1,4 +1,7 @@
 
+#ifndef DEFINES_H
+#define DEFINES_H
+
 // definidos en fichero user_setup.h de la libreira TFT_eSPI
 // para PLACA EXPERIMENTAL V1
 //#define TFT_MISO   19
@@ -44,17 +47,17 @@ const int periodo_task_ultrasonidos = 500;
 const int periodo_task_radiocontrol = 10;
 const int periodo_task_giroscopio = 500;
 const int periodo_task_websockets = 10;
-const int periodo_task_servomotores = 10;
+const int periodo_task_servomotores = 20;
 const int periodo_task_motores = 100;
-const int periodo_task_radar = 50; //10;
+const int periodo_task_radar = 100; //10;
 
 const int prioridad_task_DHT = 1;           // a mayor número, más prioridad de la tarea
 const int prioridad_task_radarhumano = 1;
 const int prioridad_task_ultrasonidos= 2;
 const int prioridad_task_radiocontrol = 2;
-const int prioridad_task_giroscopio = 23; //3;
+const int prioridad_task_giroscopio = 2; //3;
 const int prioridad_task_websockets = 3;
-const int prioridad_task_servomotores = 3;
+const int prioridad_task_servomotores = 2;
 const int prioridad_task_motores = 3;
 const int prioridad_task_radar = 2;
 
@@ -79,3 +82,5 @@ extern int enabled_task_motores;
 extern int enabled_task_radar;
 
 extern int modo_conex;   // 0=STA+AP+RC,  1= AP+RC,  2,  RC solamente
+
+#endif

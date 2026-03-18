@@ -36,47 +36,87 @@ static void calibrarGiroscopio()
   (void)rumbo_objetivo;
 }
 
+volatile bool giroscopio_ok = false;
+
 void task_giroscopio(void *pvParameters)
 {
   (void)pvParameters;
 
   esp_task_wdt_add(NULL);
 
-  if (xSemaphoreTake(i2cMutex, pdMS_TO_TICKS(100))) {
-    JY901.startIIC(i2caddress_giroscopio);
-    xSemaphoreGive(i2cMutex);
-  }
+  angleX = 0.0f;
+  angleY = 0.0f;
+  angleZ = 0.0f;
+  giroscopio_ok = false;
 
-  // calibrarGiroscopio();
+  const float offset_azimut = 180.0f;
 
   TickType_t xLastWakeTime = xTaskGetTickCount();
 
   while (1) {
     esp_task_wdt_reset();
 
-    {
-      if (xSemaphoreTake(i2cMutex, pdMS_TO_TICKS(100))) {
-        esp_task_wdt_reset();
-        angleX = JY901.getRoll();
+    // Intentar iniciar el giroscopio hasta conseguirlo
+    if (!giroscopio_ok) {
+      if (xSemaphoreTake(i2cMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
+        JY901.startIIC(i2caddress_giroscopio);
         xSemaphoreGive(i2cMutex);
+
+        vTaskDelay(pdMS_TO_TICKS(100));
+        giroscopio_ok = true;
+        Serial.println("JY901 iniciado");
+      } else {
+        static uint32_t ultimoAvisoInit = 0;
+        uint32_t ahora = millis();
+        if ((uint32_t)(ahora - ultimoAvisoInit) > 1000) {
+          Serial.println("JY901: esperando i2cMutex para iniciar");
+          ultimoAvisoInit = ahora;
+        }
       }
 
-      if (xSemaphoreTake(i2cMutex, pdMS_TO_TICKS(100))) {
-        esp_task_wdt_reset();
-        angleY = JY901.getPitch();
-        xSemaphoreGive(i2cMutex);
-      }
+      vTaskDelay(pdMS_TO_TICKS(100));
+      continue;
+    }
 
-      if (xSemaphoreTake(i2cMutex, pdMS_TO_TICKS(100))) {
-        esp_task_wdt_reset();
-        angleZ = JY901.getYaw();
+    // Lectura normal
+    if (giroscopio_ok) {
+      if (xSemaphoreTake(i2cMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
+        float roll  = JY901.getRoll();
+        float pitch = JY901.getPitch();
+        float yaw   = JY901.getYaw();
         xSemaphoreGive(i2cMutex);
-      }
+        
+if (isfinite(roll) && isfinite(pitch) && isfinite(yaw)) {
+  angleX = roll;
+  angleY = pitch;
 
-      if (angleZ < 0)
-        angleZ = -angleZ;
-      else
-        angleZ = 360 - angleZ;
+  if (yaw < 0.0f) yaw += 360.0f;
+
+  yaw = yaw - offset_azimut;
+  if (yaw < 0.0f) yaw += 360.0f;
+  if (yaw >= 360.0f) yaw -= 360.0f;
+
+  yaw = 360.0f - yaw;
+  if (yaw >= 360.0f) yaw -= 360.0f;
+
+  angleZ = yaw;
+}
+      } else {
+        static uint32_t ultimoAviso = 0;
+        static uint32_t numTimeouts = 0;
+
+        numTimeouts++;
+        uint32_t ahora = millis();
+
+        if ((uint32_t)(ahora - ultimoAviso) > 1000) {
+          if (numTimeouts > 3) {
+            Serial.print("JY901: timeout i2cMutex x");
+            Serial.println(numTimeouts);
+          }
+          numTimeouts = 0;
+          ultimoAviso = ahora;
+        }
+      }
     }
 
     esp_task_wdt_reset();
