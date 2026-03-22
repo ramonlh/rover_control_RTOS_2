@@ -49,13 +49,12 @@ void task_radar(void *pvParameters)
   esp_task_wdt_add(NULL);
 
   if (xSemaphoreTake(i2cMutex, pdMS_TO_TICKS(100))) {
-  Serial.print("VL53L0X detectado: ");
   if (!lox.begin()) {
-    Serial.println("NO");
+    Serial.println("VL53L0X detectado: NO");
     enabled_radar = 0;
     } 
   else {
-    Serial.println("OK");
+    Serial.println("VL53L0X detectado: OK");
     enabled_radar = 1;
     }     
     xSemaphoreGive(i2cMutex);

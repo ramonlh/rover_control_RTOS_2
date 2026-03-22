@@ -12,7 +12,7 @@
 // Canales del PCA9685 para los servos
 #define SERVO1_CHANNEL 8
 #define SERVO2_CHANNEL 9
-#define SERVO3_CHANNEL 12
+#define SERVO3_CHANNEL 13
 
 extern Adafruit_PWMServoDriver servos;
 

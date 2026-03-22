@@ -35,6 +35,7 @@ SemaphoreHandle_t i2cMutex;
 //#include "pantalla.h"
 #include "mux_mcp23017.h"
 #include "mux_servos_pca9685.h"
+#include "flash_manager.h"
 
 #define OFF LOW
 #define ON HIGH
@@ -68,8 +69,7 @@ void test_I2C()
 void setup() {
   Serial.begin(115200);
   // init conexiones y servidores
-  delay(1000);
-  ini_sistema_ficheros();
+  delay(300);
 
   i2cMutex = xSemaphoreCreateMutex();
 
@@ -88,21 +88,20 @@ void setup() {
     {
     Serial.println("Modo: 0 STA+AP+RC");
     init_wifi();
+    ini_sistema_ficheros();
     init_webserver();
-//    init_ftp_server();  
     if (!init_ftp_server("admin", "12341234")) {
-    Serial.println("ERROR FTP");
-    }
+      Serial.println("ERROR FTP");   }
     xTaskCreate(task_websockets, "Task WS", tamano_task_websockets, NULL, prioridad_task_websockets, NULL); // comprobado 2048
     }
   else if (modo_conex == 1)
     {
     Serial.println("Modo: 1 AP+RC");
     init_wifi();
+    ini_sistema_ficheros();
     init_webserver();
     if (!init_ftp_server("admin", "12341234")) {
-      Serial.println("Servidor FTP: ERROR");   
-      }
+      Serial.println("ERROR FTP");     }
     xTaskCreate(task_websockets, "Task WS", tamano_task_websockets, NULL, prioridad_task_websockets, NULL); // comprobado 2048
     }
   else
@@ -111,17 +110,10 @@ void setup() {
     }
   pinMode(pin_led_derecha, OUTPUT);
   pinMode(pin_led_izquierda, OUTPUT);
-  pinMode(pin_led_7colores, OUTPUT);
   pinMode(pin_choque, INPUT_PULLUP);
 
-  digitalWrite(pin_led_7colores, HIGH);
-  delay(2000);
-  digitalWrite(pin_led_7colores, LOW);
-  //if (modo_conex==0) init_mqtt();
-  //init_pantalla();
-
   // tareas que NO usan I2C
-  pinMode(13, OUTPUT);
+  init_flash_manager();
   xTaskCreate(task_dht11, "Task DHT11", tamano_task_DHT, NULL, prioridad_task_DHT, NULL); // comprobado 1024
   xTaskCreate(task_radarhumano, "Task Radar Humano", tamano_task_radarhumano, NULL, prioridad_task_radar, NULL); // comprobado 1024
   xTaskCreate(task_radiocontrol, "Task RC", tamano_task_radiocontrol, NULL, prioridad_task_radiocontrol, NULL); // comprobado 2048
@@ -145,6 +137,7 @@ void setup() {
 
 void loop() {
   // Manejo de conexiones y servidores  
+  flash_service();  
   if (modo_conex == 0)
   {
     webserver.handleClient();

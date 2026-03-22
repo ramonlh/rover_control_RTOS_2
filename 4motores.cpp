@@ -7,6 +7,8 @@
 #include <Arduino.h>
 #include <esp_task_wdt.h>
 
+#include "flash_manager.h"
+
 #define MFORWARD 1
 #define MBACK    0
 
@@ -147,9 +149,8 @@ void rover_move(int dirDI, int dirDD, int dirTD, int dirTI,
 
 void handle_obstaculos()
 {
-  if (digitalRead(pin_choque) == 0) {
-    digitalWrite(pin_led_7colores, HIGH);
-  }
+  const bool choque_activo = (digitalRead(pin_choque) == 0);
+  flash_set_hold(choque_activo);
 
   const int distancia = dist_radar;
   if (distancia > 0 && distancia <= 150) {
@@ -157,8 +158,6 @@ void handle_obstaculos()
       rover_stop();
       give_i2c_mutex();
     }
-
-    digitalWrite(pin_led_7colores, LOW);
   }
 }
 

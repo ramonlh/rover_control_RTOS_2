@@ -124,7 +124,6 @@ const char head_2[] PROGMEM =
               "<button onclick=\"sCom('speedmas')\">+++</button>"
               "<button onclick=\"sCom('luces')\">Luces</button>"
               "<button onclick=\"sCom('flash')\">Flash</button>"
-              "<a href=\"/setup\"><button>Config</button></a>"
             "</div>"
 
             "<div id=\"wsStatus\" style=\"color:green;\"></div>"
@@ -375,11 +374,6 @@ const char script_01[] PROGMEM =
 
     "requestAnimationFrame(drawRadar);"
 
-    "setTimeout(() => {"
-      "const img = document.getElementById('streamImg');"
-      "img.src = 'http://192.168.4.2:81/stream';"
-    "}, 100);"
-
     "let debugRuedas = false;"
     "function sComDebug(command) {"
       "if (debugRuedas) {"
@@ -438,8 +432,6 @@ const char script_01[] PROGMEM =
     "}"
 
     "function camToggleFlash(){camFlashOn=!camFlashOn;camControl('led_intensity',camFlashOn?255:0);}"
-    "function camMirror(el){camControl('hmirror',el.checked?1:0);}"
-    "function camFlip(el){camControl('vflip',el.checked?1:0);}"
     "camInit();"
 
   "</script>"

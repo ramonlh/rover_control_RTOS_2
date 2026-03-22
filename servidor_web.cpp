@@ -1,14 +1,10 @@
 
 #include "servidor_web.h"
 
-//#include <UnixTime.h>
-//#include <web_pages.h>
-//#include <ArduinoJson.h>
-//#include <FS.h>
-//#include <FFat.h>
 
 WebServer webserver(PORT_WEBSERVER);
 char other_ip[16] = "192.168.4.2";
+
 
 static const char* textplain = "text/plain";
 static const char* CONFIG_FILE = "/config.json";
@@ -227,6 +223,11 @@ void handle_save_config()
   webserver.send(200, "application/json", "{\"ok\":true}");
 }
 
+
+
+
+
+
 void init_webserver()
 {
   readConfigFromFFat();
@@ -241,7 +242,6 @@ void init_webserver()
   webserver.on("/restart", HTTP_POST, []() { 
     webserver.send(200, "text/plain", "Reiniciando"); delay(300); ESP.restart();
     });
-
   webserver.onNotFound(handle_NotFound);
   webserver.begin();
 }
