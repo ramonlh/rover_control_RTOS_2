@@ -9,6 +9,9 @@ extern int rover_speed;
 extern int tipo_mov;
 extern volatile int control_activo;
 extern const char* text_accion[10];
+extern volatile bool mantener_rumbo_habilitado;
+void set_mantener_rumbo(bool on);
+bool get_mantener_rumbo();
 
 // Comandos base de movimiento
 enum MovimientoBase {

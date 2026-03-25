@@ -77,6 +77,15 @@ static void enviar_estado_basico(uint8_t cliente)
     webSocket.sendTXT(cliente, buffer);
 }
 
+static void enviar_estado_rumbo(uint8_t cliente)
+{
+    char buffer[JSON_BUFFER_SIZE];
+    snprintf(buffer, sizeof(buffer),
+             "{\"type\":\"rumbo\",\"enabled\":%d}",
+             get_mantener_rumbo() ? 1 : 0);
+    webSocket.sendTXT(cliente, buffer);
+}
+
 static bool procesar_json_movimiento(const char* message)
 {
     StaticJsonDocument<256> jsonDoc;
@@ -203,7 +212,20 @@ static bool procesar_comando_texto(uint8_t cliente, const char* message)
         scanWiFiNetworks(cliente);
         return true;
     }
-
+    else if (strcmp(message, "rumbo_on") == 0) {
+        set_mantener_rumbo(true);
+        enviar_estado_rumbo(cliente);
+        return true;
+    }
+    else if (strcmp(message, "rumbo_off") == 0) {
+        set_mantener_rumbo(false);
+        enviar_estado_rumbo(cliente);
+        return true;
+    }
+    else if (strcmp(message, "rumbo_get") == 0) {
+        enviar_estado_rumbo(cliente);
+        return true;
+    }
     return false;
 }
 
@@ -213,6 +235,7 @@ static void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t 
         case WStype_CONNECTED:
             Serial.printf("WebSocket cliente %u conectado.\n", num);
             enviar_estado_basico(num);
+            enviar_estado_rumbo(num);
             break;
 
         case WStype_DISCONNECTED:

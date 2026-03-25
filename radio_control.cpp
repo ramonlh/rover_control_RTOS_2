@@ -6,14 +6,27 @@
 RCSwitch mySwitch = RCSwitch();
 unsigned long ultima_senal_RC = 0;
 
-
-// Códigos mando blanco RF433
-static const int num_buttonsRC = 16;
+// Códigos mando RF433 de 18 teclas
+static const int num_buttonsRC = 18;
 static const unsigned long codesRC[num_buttonsRC] = {
-  6047491, 6047500, 6047536, 6047692,
-  6047695, 6047548, 6047551, 6047728,
-  6047683, 6047503, 6047740, 6047731,
-  6047743, 6047680, 6047539, 6047488
+  7450371, // 1
+  7450380, // 2
+  7450416, // 3
+  7450572, // 4
+  7450575, // 5
+  7450428, // 6
+  7450431, // 7
+  7450608, // 8
+  7450563, // 9
+  7450383, // 10
+  7450620, // 11
+  7450611, // 12
+  7450623, // 13
+  7450560, // 14
+  7450419, // 15
+  7450368, // 16
+  7450432, // 17
+  7450384  // 18
 };
 
 int decode_RC(unsigned long codeRC)
@@ -46,35 +59,110 @@ void task_radiocontrol(void *pvParameters)
 
   while (1) {
     if (enabled_task_radiocontrol == 1) {
-      int boton_RC = lee_RC();
+      const int boton_RC = lee_RC();
 
-      if (boton_RC >= 1 && boton_RC <= 14) {
-        tipo_mov = 50 + boton_RC;
-        ultima_senal_RC = millis();
-        control_activo = 2;
+      switch (boton_RC) {
+        case 1:   // + velocidad
+          set_speed_rover(rover_speed + 500);
+          break;
+
+        case 2:   // - velocidad
+          set_speed_rover(rover_speed - 500);
+          break;
+
+        case 3:   // luces
+          digitalWrite(pin_led_izquierda, !digitalRead(pin_led_izquierda));
+          digitalWrite(pin_led_derecha, !digitalRead(pin_led_derecha));
+          break;
+
+        case 4:   // flash
+          digitalWrite(pin_led_7colores, !digitalRead(pin_led_7colores));
+          break;
+
+        case 5:   // activar/desactivar rumbo
+          digitalWrite(pin_led_izquierda, get_mantener_rumbo());
+          digitalWrite(pin_led_derecha, get_mantener_rumbo());        
+          set_mantener_rumbo(!get_mantener_rumbo());
+          break;
+
+        case 6:   // STOP
+          tipo_mov = comando_radio(MOV_STOP);
+          ultima_senal_RC = millis();
+          control_activo = 0;
+          break;
+
+        case 7:   // giro izda
+          tipo_mov = comando_radio(MOV_ADELANTE_IZQ);
+          ultima_senal_RC = millis();
+          control_activo = 2;
+          break;
+
+        case 8:   // adelante
+          tipo_mov = comando_radio(MOV_ADELANTE);
+          ultima_senal_RC = millis();
+          control_activo = 2;
+          break;
+
+        case 9:   // giro dcha
+          tipo_mov = comando_radio(MOV_ADELANTE_DER);
+          ultima_senal_RC = millis();
+          control_activo = 2;
+          break;
+
+        case 10:  // lat izda
+          tipo_mov = comando_radio(MOV_LAT_1);
+          ultima_senal_RC = millis();
+          control_activo = 2;
+          break;
+
+        case 11:  // sin uso
+          break;
+
+        case 12:  // lat dcha
+          tipo_mov = comando_radio(MOV_LAT_2);
+          ultima_senal_RC = millis();
+          control_activo = 2;
+          break;
+
+        case 13:  // rot izda
+          tipo_mov = comando_radio(MOV_ROT_IZQ);
+          ultima_senal_RC = millis();
+          control_activo = 2;
+          break;
+
+        case 14:  // sin uso
+          break;
+
+        case 15:  // rot dcha
+          tipo_mov = comando_radio(MOV_ROT_DER);
+          ultima_senal_RC = millis();
+          control_activo = 2;
+          break;
+
+        case 16:  // giro izda atrás
+          tipo_mov = comando_radio(MOV_ATRAS_IZQ);
+          ultima_senal_RC = millis();
+          control_activo = 2;
+          break;
+
+        case 17:  // atrás recto
+          tipo_mov = comando_radio(MOV_ATRAS);
+          ultima_senal_RC = millis();
+          control_activo = 2;
+          break;
+
+        case 18:  // giro dcha atrás
+          tipo_mov = comando_radio(MOV_ATRAS_DER);
+          ultima_senal_RC = millis();
+          control_activo = 2;
+          break;
+
+        default:
+          break;
       }
 
-      if (boton_RC >= 11 && boton_RC <= 14) {
-        switch (boton_RC) {
-          case 11:
-            set_speed_rover(rover_speed - 500);
-            break;
-          case 12:
-            set_speed_rover(rover_speed + 500);
-            break;
-          case 13:
-            digitalWrite(pin_led_7colores, HIGH);
-            break;
-          case 14:
-            digitalWrite(pin_led_7colores, LOW);
-            break;
-        }
-        ultima_senal_RC = millis();
-        control_activo = 2;
-      }
-
-      if (millis() - ultima_senal_RC > 200 && control_activo == 2) {
-        tipo_mov = 50;
+      if (control_activo == 2 && (millis() - ultima_senal_RC > 200)) {
+        tipo_mov = comando_radio(MOV_STOP);
         control_activo = 0;
       }
     }
