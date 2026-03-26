@@ -21,6 +21,17 @@ The firmware uses a multitasking architecture based on **FreeRTOS** and supports
 
 ---
 
+## 1.1 Project Documentation
+
+The main project documentation, source code, and updates are available on GitHub:
+
+**Repository documentation:**  
+https://github.com/ramonlh/rover_control_RTOS_2/tree/main
+
+If you need build instructions, firmware architecture notes, or development details, start there together with the main `README.md` file in the repository.
+
+---
+
 ## 2. Main Operating Modes
 
 The rover supports three general operating modes:
@@ -447,4 +458,4 @@ The exact user experience can vary depending on:
 - selected operating mode
 - calibration and tuning values
 
-For build instructions, firmware architecture, and development details, see the main `README.md` in the repository.
+For build instructions, firmware architecture, and development details, see the GitHub repository and the main `README.md`: https://github.com/ramonlh/rover_control_RTOS_2/tree/main
