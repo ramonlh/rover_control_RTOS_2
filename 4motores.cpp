@@ -49,6 +49,7 @@ static constexpr int   RUMBO_SPEED_MIN_CONTROL = 700;   // no corregir demasiado
 static constexpr int   RUMBO_CORRECCION_MAX    = 700;   // límite de corrección
 static constexpr float RUMBO_KP                = 18.0f; // si corrige poco subir a 22-25. Si zigzaguea bajar a 12-15
 static constexpr float RUMBO_DEADBAND_GRADOS   = 1.5f;  // zona muerta
+static constexpr float FACTOR_CURVA = 0.45f;   // prueba 0.60; luego 0.70 si aún gira brusco
 
 // Orden lógico en rover_move():
 // rover_move(dirDI, dirDD, dirTD, dirTI, speedDI, speedDD, speedTD, speedTI)
@@ -77,6 +78,25 @@ static inline int movement_speed(int speed)
   }
 
   return speed;
+}
+
+static inline float curva_factor_por_velocidad(int spd)
+{
+  spd = movement_speed(spd);
+
+  // A baja velocidad: curva más cerrada
+  const int   V_BAJA = 700;
+  const float K_BAJA = 0.40f;
+
+  // A alta velocidad: curva más suave
+  const int   V_ALTA = 2500;
+  const float K_ALTA = 0.60f;
+
+  if (spd <= V_BAJA) return K_BAJA;
+  if (spd >= V_ALTA) return K_ALTA;
+
+  const float t = (float)(spd - V_BAJA) / (float)(V_ALTA - V_BAJA);
+  return K_BAJA + t * (K_ALTA - K_BAJA);
 }
 
 static inline bool take_i2c_mutex(TickType_t timeoutTicks = pdMS_TO_TICKS(I2C_MUTEX_TIMEOUT_MS))
@@ -283,30 +303,45 @@ static void apply_movement_locked(int mov_base, int spd, float yaw_actual)
       }
       break;
 
-    case MOV_ADELANTE_IZQ:
-      desactivar_control_rumbo();
-      rover_move(MFORWARD, MFORWARD, MFORWARD, MFORWARD, 0, spd, 0, spd);
-      break;
+      case MOV_ADELANTE_IZQ:
+      {
+        desactivar_control_rumbo();
+        const float k = curva_factor_por_velocidad(spd);
+        const int spd_int = clamp_speed((int)(spd * k));
+        rover_move(MFORWARD, MFORWARD, MFORWARD, MFORWARD,
+                  spd_int, spd, spd, spd_int);
+        break;
+      }
 
-    case MOV_ADELANTE_DER:
-      desactivar_control_rumbo();
-      rover_move(MFORWARD, MFORWARD, MFORWARD, MFORWARD, spd, 0, spd, 0);
-      break;
+      case MOV_ADELANTE_DER:
+      {
+        desactivar_control_rumbo();
+        const float k = curva_factor_por_velocidad(spd);
+        const int spd_int = clamp_speed((int)(spd * k));
+        rover_move(MFORWARD, MFORWARD, MFORWARD, MFORWARD,
+                  spd, spd_int, spd_int, spd);
+        break;
+      }
 
-    case MOV_ATRAS_IZQ:
-      desactivar_control_rumbo();
-      rover_move(MBACK, MBACK, MBACK, MBACK, 0, spd, 0, spd);
-      break;
+      case MOV_ATRAS_IZQ:
+      {
+        desactivar_control_rumbo();
+        const float k = curva_factor_por_velocidad(spd);
+        const int spd_int = clamp_speed((int)(spd * k));
+        rover_move(MBACK, MBACK, MBACK, MBACK,
+                  spd_int, spd, spd, spd_int);
+        break;
+      }
 
-    case MOV_ATRAS_DER:
-      desactivar_control_rumbo();
-      rover_move(MBACK, MBACK, MBACK, MBACK, spd, 0, spd, 0);
-      break;
-
-    case MOV_ROT_IZQ:
-      desactivar_control_rumbo();
-      rover_move(MBACK, MFORWARD, MBACK, MFORWARD, spd, spd, spd, spd);
-      break;
+      case MOV_ATRAS_DER:
+      {
+        desactivar_control_rumbo();
+        const float k = curva_factor_por_velocidad(spd);
+        const int spd_int = clamp_speed((int)(spd * k));
+        rover_move(MBACK, MBACK, MBACK, MBACK,
+                  spd, spd_int, spd_int, spd);
+        break;
+      }
 
     case MOV_ROT_DER:
       desactivar_control_rumbo();
